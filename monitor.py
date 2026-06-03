@@ -107,10 +107,13 @@ def get_sentiment(text):
 
 
 def find_mentioned_stocks(text):
-    """หาว่าพูดถึงหุ้นตัวไหนบ้าง"""
+    """หาว่าพูดถึงหุ้นตัวไหนบ้าง — ค้นหาแบบ whole word ไม่จับใน URL"""
     mentioned = []
+    # ตัด URL ออกก่อน แล้วค้นหาใน clean text เท่านั้น
+    clean = re.sub(r'https?://\S+', '', text)
     for ticker in WATCHLIST:
-        if ticker in text.upper():
+        # ต้องเป็น word boundary เท่านั้น
+        if re.search(r'\b' + ticker + r'\b', clean.upper()):
             mentioned.append(f"${ticker}")
     return mentioned
 
