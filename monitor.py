@@ -7,31 +7,51 @@ from datetime import datetime
 from urllib.parse import quote
 
 # ==========================================
-# ตั้งค่าใน Railway Environment Variables
-# ==========================================
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 CHECK_INTERVAL_HOURS = int(os.environ.get("CHECK_INTERVAL_HOURS", "4"))
 
-# หุ้นที่ติดตาม
-WATCHLIST = [
-    "RKLB", "ASTS", "LUNR",
-    "NVDA", "AMD", "QCOM",
-    "IONQ", "RGTI", "QUBT",
-    "PLTR", "TSLA",
+# คนดังที่ติดตาม + หุ้นที่เกี่ยวข้อง
+TARGETS = [
+    {
+        "name": "Jensen Huang",
+        "queries": ["Jensen Huang stock", "Jensen Huang NVIDIA invest", "Jensen Huang says"],
+        "role": "CEO NVIDIA",
+        "emoji": "🟢"
+    },
+    {
+        "name": "Elon Musk",
+        "queries": ["Elon Musk stock buy", "Elon Musk invest company", "Elon Musk praises"],
+        "role": "CEO Tesla / SpaceX / xAI",
+        "emoji": "🔵"
+    },
+    {
+        "name": "Donald Trump",
+        "queries": ["Trump stock market", "Trump company invest", "Trump tariff stock"],
+        "role": "President USA",
+        "emoji": "🔴"
+    },
+    {
+        "name": "Cathie Wood",
+        "queries": ["Cathie Wood buy stock", "Cathie Wood ARK invest", "Cathie Wood bullish"],
+        "role": "CEO ARK Invest",
+        "emoji": "🟡"
+    },
+    {
+        "name": "Warren Buffett",
+        "queries": ["Warren Buffett buy stock", "Buffett Berkshire invest", "Warren Buffett bullish"],
+        "role": "CEO Berkshire Hathaway",
+        "emoji": "🟠"
+    },
 ]
 
-INFLUENCERS = [
-    "Elon Musk", "Cathie Wood", "Warren Buffett",
-    "Michael Burry", "Jim Cramer", "Ray Dalio",
-    "Chamath", "Saylor",
-]
+# หุ้นที่สนใจ (ใช้จับว่าคนดังพูดถึงหุ้นที่ติดตามไหม)
+WATCHLIST = ["NVDA","TSLA","RKLB","ASTS","LUNR","AMD","IONQ","RGTI","QUBT","PLTR","AAPL","META","GOOG","AMZN","MSFT"]
 
 SEEN_TITLES = set()
 
 # ==========================================
 
 def send_discord(title, description, color=0x00b4d8):
-    """ส่งข้อความผ่าน Discord Webhook แบบ Embed สวยงาม"""
     if not DISCORD_WEBHOOK_URL:
         print(f"[NO WEBHOOK] {title}")
         return
@@ -44,12 +64,12 @@ def send_discord(title, description, color=0x00b4d8):
                 "footer": {"text": f"Stock Monitor • {datetime.now().strftime('%d/%m/%Y %H:%M')}"}
             }]
         }, timeout=10)
-        print(f"Discord {'✅' if r.status_code in [200, 204] else '❌'} {r.status_code}")
+        print(f"Discord {'✅' if r.status_code in [200,204] else '❌'} {r.status_code}")
     except Exception as e:
         print(f"Discord error: {e}")
 
 
-def fetch_google_news(query):
+def fetch_news(query):
     url = f"https://news.google.com/rss/search?q={quote(query)}&hl=en-US&gl=US&ceid=US:en"
     try:
         r = requests.get(url, timeout=10, headers={
@@ -67,97 +87,111 @@ def fetch_google_news(query):
                 articles.append({
                     "title": re.sub(r'<[^>]+>', '', title.group(1)).strip(),
                     "url": link.group(1).strip() if link else "",
-                    "description": re.sub(r'<[^>]+>', '', desc.group(1)).strip()[:200] if desc else "",
+                    "description": re.sub(r'<[^>]+>', '', desc.group(1)).strip()[:300] if desc else "",
                 })
         return articles
     except Exception as e:
-        print(f"  RSS error [{query}]: {e}")
+        print(f"  RSS error: {e}")
         return []
 
 
 def get_sentiment(text):
     t = text.lower()
-    bull = ["surge","rally","bullish","buy","upgrade","beat","record","soar","growth","profit","gain","strong","rise","outperform","raised"]
-    bear = ["crash","drop","bearish","sell","downgrade","miss","loss","plunge","weak","fall","concern","risk","cut","underperform","warning"]
+    bull = ["buy","bullish","surge","rally","upgrade","beat","record","soar","profit","gain","strong","rise","outperform","raise","praise","recommends","loves","backs","supports","invests"]
+    bear = ["sell","bearish","crash","drop","downgrade","miss","loss","plunge","weak","fall","concern","risk","cut","underperform","warning","dumps","exits"]
     b = sum(1 for w in bull if w in t)
     s = sum(1 for w in bear if w in t)
-    if b > s: return ("📈 Bullish", 0x2ecc71)   # สีเขียว
-    if s > b: return ("📉 Bearish", 0xe74c3c)   # สีแดง
-    return ("➡️ Neutral", 0x95a5a6)             # สีเทา
+    if b > s: return ("📈 Bullish", 0x2ecc71)
+    if s > b: return ("📉 Bearish", 0xe74c3c)
+    return ("➡️ Neutral", 0x95a5a6)
 
 
-def check_influencer(text):
-    return [p for p in INFLUENCERS if p.lower() in text.lower()]
+def find_mentioned_stocks(text):
+    """หาว่าพูดถึงหุ้นตัวไหนบ้าง"""
+    mentioned = []
+    for ticker in WATCHLIST:
+        if ticker in text.upper():
+            mentioned.append(f"${ticker}")
+    return mentioned
 
 
 def check_all():
     print(f"\n{'='*45}")
-    print(f"🔍 [{datetime.now().strftime('%Y-%m-%d %H:%M')}] เริ่มเช็คข่าว")
+    print(f"🔍 [{datetime.now().strftime('%Y-%m-%d %H:%M')}] เช็คข่าวคนดัง")
     print(f"{'='*45}")
 
-    alerts = []
+    found_any = False
 
-    for ticker in WATCHLIST:
-        articles = fetch_google_news(f"{ticker} stock")
-        time.sleep(1)
-        for art in articles:
-            if art["title"] in SEEN_TITLES:
-                continue
-            SEEN_TITLES.add(art["title"])
-            full = f"{art['title']} {art['description']}"
-            sentiment, color = get_sentiment(full)
-            influencers = check_influencer(full)
-            if influencers or "Neutral" not in sentiment:
-                alerts.append({**art, "ticker": ticker, "sentiment": sentiment, "color": color, "influencers": influencers})
-                print(f"  🚨 {ticker} {sentiment} | {art['title'][:55]}...")
+    for target in TARGETS:
+        print(f"\n  {target['emoji']} ค้นหา: {target['name']}...")
+        
+        for query in target["queries"]:
+            articles = fetch_news(query)
+            time.sleep(1)
 
-    for query in ["Elon Musk stock", "Cathie Wood buy sell", "Warren Buffett invest"]:
-        articles = fetch_google_news(query)
-        time.sleep(1)
-        for art in articles:
-            if art["title"] not in SEEN_TITLES:
+            for art in articles:
+                if art["title"] in SEEN_TITLES:
+                    continue
                 SEEN_TITLES.add(art["title"])
-                for ticker in WATCHLIST:
-                    if ticker in art["title"] or ticker in art["description"]:
-                        sentiment, color = get_sentiment(art["title"])
-                        alerts.append({**art, "ticker": ticker, "sentiment": sentiment, "color": color, "influencers": check_influencer(query)})
 
-    if alerts:
-        # ส่งทีละ alert เป็น embed สวยๆ
-        for a in alerts[:5]:
-            desc = f"**{a['sentiment']}**\n\n"
-            desc += f"📰 {a['title']}\n\n"
-            if a['influencers']:
-                desc += f"👤 พูดถึงโดย: **{', '.join(a['influencers'])}**\n\n"
-            if a['url']:
-                desc += f"[🔗 อ่านข่าวเต็ม]({a['url']})"
-            send_discord(f"${a['ticker']} Alert", desc, a['color'])
-            time.sleep(0.5)
-        print(f"\n✅ ส่ง Discord แล้ว ({len(alerts)} alerts)")
-    else:
-        print("  ✓ ไม่มีข่าวสำคัญรอบนี้")
+                full = f"{art['title']} {art['description']}"
+                
+                # ต้องมีชื่อคนดังจริงๆ ในข่าว
+                if target["name"].split()[0].lower() not in full.lower() and \
+                   target["name"].split()[-1].lower() not in full.lower():
+                    continue
 
-    return alerts
+                sentiment, color = get_sentiment(full)
+                stocks_mentioned = find_mentioned_stocks(full)
+
+                # แจ้งเฉพาะถ้ามีหุ้นที่สนใจ หรือ sentiment ชัดเจน
+                if stocks_mentioned or sentiment != "➡️ Neutral":
+                    found_any = True
+                    print(f"    🚨 {art['title'][:60]}...")
+
+                    desc = f"**{target['role']}** {target['emoji']}\n\n"
+                    desc += f"_{sentiment}_\n\n"
+                    desc += f"📰 {art['title']}\n\n"
+                    
+                    if stocks_mentioned:
+                        desc += f"🎯 **หุ้นที่พูดถึง:** {', '.join(stocks_mentioned)}\n\n"
+                    
+                    if art['description']:
+                        desc += f"📝 {art['description'][:200]}...\n\n"
+                    
+                    if art['url']:
+                        desc += f"[🔗 อ่านข่าวเต็ม]({art['url']})"
+
+                    send_discord(
+                        f"{target['emoji']} {target['name']} พูดถึงหุ้น!",
+                        desc,
+                        color
+                    )
+                    time.sleep(0.5)
+
+    if not found_any:
+        print("  ✓ ไม่มีข่าวสำคัญจากคนดังรอบนี้")
 
 
 def morning_summary():
+    names = [f"{t['emoji']} {t['name']}" for t in TARGETS]
     send_discord(
-        "🌅 Good Morning! Stock Summary",
-        f"Monitor ทำงานปกติ ✅\n\n🎯 **ติดตาม:** {', '.join(WATCHLIST)}\n⏰ เช็คทุก {CHECK_INTERVAL_HOURS} ชั่วโมง",
+        "🌅 Good Morning! Stock Monitor",
+        f"ระบบทำงานปกติ ✅\n\n**ติดตามคนดัง:**\n" + "\n".join(names) + f"\n\n⏰ เช็คทุก {CHECK_INTERVAL_HOURS} ชั่วโมง",
         color=0xf39c12
     )
     check_all()
 
 
 def main():
-    print("🚀 Stock Monitor Bot เริ่มทำงาน!")
-    print(f"📋 Watchlist: {', '.join(WATCHLIST)}")
+    print("🚀 Stock Monitor (Celebrity Edition) เริ่มทำงาน!")
+    print(f"👤 ติดตาม {len(TARGETS)} คนดัง")
     print(f"⏰ เช็คทุก {CHECK_INTERVAL_HOURS} ชั่วโมง")
-    print(f"🎮 Discord Webhook: {'✅ มี' if DISCORD_WEBHOOK_URL else '❌ ยังไม่ได้ตั้งค่า'}\n")
 
+    names = "\n".join([f"{t['emoji']} {t['name']} ({t['role']})" for t in TARGETS])
     send_discord(
         "✅ Stock Monitor เริ่มทำงานแล้ว!",
-        f"📋 ติดตาม **{len(WATCHLIST)} หุ้น**\n⏰ แจ้งเตือนทุก **{CHECK_INTERVAL_HOURS} ชั่วโมง**\n🎯 {', '.join(WATCHLIST)}",
+        f"**กำลังติดตามคนดัง:**\n{names}\n\n⏰ แจ้งเตือนทุก {CHECK_INTERVAL_HOURS} ชั่วโมง",
         color=0x00b4d8
     )
 
