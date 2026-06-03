@@ -3,14 +3,16 @@ import time
 import requests
 import re
 import schedule
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
+from email.utils import parsedate_to_datetime
 
 # ==========================================
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 CHECK_INTERVAL_HOURS = int(os.environ.get("CHECK_INTERVAL_HOURS", "4"))
 
-# คนดังที่ติดตาม + หุ้นที่เกี่ยวข้อง
+TH_TZ = timezone(timedelta(hours=7))  # Asia/Bangkok
+
 TARGETS = [
     {
         "name": "Jensen Huang",
@@ -44,8 +46,7 @@ TARGETS = [
     },
 ]
 
-# หุ้นที่สนใจ (ใช้จับว่าคนดังพูดถึงหุ้นที่ติดตามไหม)
-WATCHLIST = ["NVDA","TSLA","RKLB","ASTS","LUNR","AMD","IONQ","RGTI","QUBT","PLTR","AAPL","META","GOOG","AMZN","MSFT"]
+WATCHLIST = ["NVDA","TSLA","RKLB","ASTS","LUNR","AMD","IONQ","RGTI","QUBT","PLTR","AAPL","META","GOOG","AMZN","MSFT","MRVL"]
 
 SEEN_TITLES = set()
 
@@ -61,12 +62,22 @@ def send_discord(title, description, color=0x00b4d8):
                 "title": title,
                 "description": description,
                 "color": color,
-                "footer": {"text": f"Stock Monitor • {datetime.now().strftime('%d/%m/%Y %H:%M')}"}
+                "footer": {"text": f"Stock Monitor • {datetime.now(TH_TZ).strftime('%d/%m/%Y %H:%M')} (เวลาไทย)"}
             }]
         }, timeout=10)
         print(f"Discord {'✅' if r.status_code in [200,204] else '❌'} {r.status_code}")
     except Exception as e:
         print(f"Discord error: {e}")
+
+
+def parse_pub_date(pub_date_str):
+    """แปลง pubDate เป็นเวลาไทย"""
+    try:
+        dt = parsedate_to_datetime(pub_date_str)
+        dt_th = dt.astimezone(TH_TZ)
+        return dt_th.strftime("%d/%m/%Y %H:%M")
+    except:
+        return None
 
 
 def fetch_news(query):
@@ -83,11 +94,17 @@ def fetch_news(query):
             title = re.search(r'<title>(.*?)</title>', item)
             link = re.search(r'<link>(.*?)</link>', item)
             desc = re.search(r'<description>(.*?)</description>', item)
+            pub = re.search(r'<pubDate>(.*?)</pubDate>', item)
             if title:
+                clean_desc = re.sub(r'<[^>]+>', '', desc.group(1)).strip() if desc else ""
+                # ตัด URL ออกจาก description
+                clean_desc = re.sub(r'https?://\S+', '', clean_desc).strip()
+                clean_desc = re.sub(r'&lt;.*', '', clean_desc).strip()  # ตัด html entities
                 articles.append({
                     "title": re.sub(r'<[^>]+>', '', title.group(1)).strip(),
                     "url": link.group(1).strip() if link else "",
-                    "description": re.sub(r'<[^>]+>', '', desc.group(1)).strip()[:300] if desc else "",
+                    "description": clean_desc[:250],
+                    "pub_date": parse_pub_date(pub.group(1).strip()) if pub else None,
                 })
         return articles
     except Exception as e:
@@ -97,8 +114,8 @@ def fetch_news(query):
 
 def get_sentiment(text):
     t = text.lower()
-    bull = ["buy","bullish","surge","rally","upgrade","beat","record","soar","profit","gain","strong","rise","outperform","raise","praise","recommends","loves","backs","supports","invests"]
-    bear = ["sell","bearish","crash","drop","downgrade","miss","loss","plunge","weak","fall","concern","risk","cut","underperform","warning","dumps","exits"]
+    bull = ["buy","bullish","surge","rally","upgrade","beat","record","soar","profit","gain","strong","rise","outperform","raise","praise","recommends","loves","backs","supports","invests","loads up"]
+    bear = ["sell","bearish","crash","drop","downgrade","miss","loss","plunge","weak","fall","concern","risk","cut","underperform","warning","dumps","exits","sold"]
     b = sum(1 for w in bull if w in t)
     s = sum(1 for w in bear if w in t)
     if b > s: return ("📈 Bullish", 0x2ecc71)
@@ -107,12 +124,10 @@ def get_sentiment(text):
 
 
 def find_mentioned_stocks(text):
-    """หาว่าพูดถึงหุ้นตัวไหนบ้าง — ค้นหาแบบ whole word ไม่จับใน URL"""
-    mentioned = []
-    # ตัด URL ออกก่อน แล้วค้นหาใน clean text เท่านั้น
+    """หาว่าพูดถึงหุ้นตัวไหนบ้าง — ตัด URL ออกก่อน"""
     clean = re.sub(r'https?://\S+', '', text)
+    mentioned = []
     for ticker in WATCHLIST:
-        # ต้องเป็น word boundary เท่านั้น
         if re.search(r'\b' + ticker + r'\b', clean.upper()):
             mentioned.append(f"${ticker}")
     return mentioned
@@ -120,14 +135,14 @@ def find_mentioned_stocks(text):
 
 def check_all():
     print(f"\n{'='*45}")
-    print(f"🔍 [{datetime.now().strftime('%Y-%m-%d %H:%M')}] เช็คข่าวคนดัง")
+    print(f"🔍 [{datetime.now(TH_TZ).strftime('%Y-%m-%d %H:%M')}] เช็คข่าวคนดัง")
     print(f"{'='*45}")
 
     found_any = False
 
     for target in TARGETS:
         print(f"\n  {target['emoji']} ค้นหา: {target['name']}...")
-        
+
         for query in target["queries"]:
             articles = fetch_news(query)
             time.sleep(1)
@@ -138,8 +153,7 @@ def check_all():
                 SEEN_TITLES.add(art["title"])
 
                 full = f"{art['title']} {art['description']}"
-                
-                # ต้องมีชื่อคนดังจริงๆ ในข่าว
+
                 if target["name"].split()[0].lower() not in full.lower() and \
                    target["name"].split()[-1].lower() not in full.lower():
                     continue
@@ -147,21 +161,24 @@ def check_all():
                 sentiment, color = get_sentiment(full)
                 stocks_mentioned = find_mentioned_stocks(full)
 
-                # แจ้งเฉพาะถ้ามีหุ้นที่สนใจ หรือ sentiment ชัดเจน
                 if stocks_mentioned or sentiment != "➡️ Neutral":
                     found_any = True
                     print(f"    🚨 {art['title'][:60]}...")
 
-                    desc = f"**{target['role']}** {target['emoji']}\n\n"
+                    desc = f"**{target['role']}** {target['emoji']}\n"
                     desc += f"_{sentiment}_\n\n"
-                    desc += f"📰 {art['title']}\n\n"
-                    
+                    desc += f"📰 **{art['title']}**\n\n"
+
                     if stocks_mentioned:
                         desc += f"🎯 **หุ้นที่พูดถึง:** {', '.join(stocks_mentioned)}\n\n"
-                    
+
                     if art['description']:
-                        desc += f"📝 {art['description'][:200]}...\n\n"
-                    
+                        desc += f"📝 {art['description']}\n\n"
+
+                    # เพิ่มวันที่เวลาตามข่าว
+                    if art['pub_date']:
+                        desc += f"🕐 **เวลาข่าว (ไทย):** {art['pub_date']}\n\n"
+
                     if art['url']:
                         desc += f"[🔗 อ่านข่าวเต็ม]({art['url']})"
 
@@ -180,7 +197,8 @@ def morning_summary():
     names = [f"{t['emoji']} {t['name']}" for t in TARGETS]
     send_discord(
         "🌅 Good Morning! Stock Monitor",
-        f"ระบบทำงานปกติ ✅\n\n**ติดตามคนดัง:**\n" + "\n".join(names) + f"\n\n⏰ เช็คทุก {CHECK_INTERVAL_HOURS} ชั่วโมง",
+        f"ระบบทำงานปกติ ✅\n\n**ติดตามคนดัง:**\n" + "\n".join(names) +
+        f"\n\n⏰ เช็คทุก {CHECK_INTERVAL_HOURS} ชั่วโมง",
         color=0xf39c12
     )
     check_all()
