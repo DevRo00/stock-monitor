@@ -10,45 +10,41 @@ from email.utils import parsedate_to_datetime
 # ==========================================
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 CHECK_INTERVAL_HOURS = int(os.environ.get("CHECK_INTERVAL_HOURS", "4"))
-
-TH_TZ = timezone(timedelta(hours=7))  # Asia/Bangkok
+TH_TZ = timezone(timedelta(hours=7))
 
 TARGETS = [
-    {
-        "name": "Jensen Huang",
-        "queries": ["Jensen Huang stock", "Jensen Huang NVIDIA invest", "Jensen Huang says"],
-        "role": "CEO NVIDIA",
-        "emoji": "🟢"
-    },
-    {
-        "name": "Elon Musk",
-        "queries": ["Elon Musk stock buy", "Elon Musk invest company", "Elon Musk praises"],
-        "role": "CEO Tesla / SpaceX / xAI",
-        "emoji": "🔵"
-    },
-    {
-        "name": "Donald Trump",
-        "queries": ["Trump stock market", "Trump company invest", "Trump tariff stock"],
-        "role": "President USA",
-        "emoji": "🔴"
-    },
-    {
-        "name": "Cathie Wood",
-        "queries": ["Cathie Wood buy stock", "Cathie Wood ARK invest", "Cathie Wood bullish"],
-        "role": "CEO ARK Invest",
-        "emoji": "🟡"
-    },
-    {
-        "name": "Warren Buffett",
-        "queries": ["Warren Buffett buy stock", "Buffett Berkshire invest", "Warren Buffett bullish"],
-        "role": "CEO Berkshire Hathaway",
-        "emoji": "🟠"
-    },
+    {"name": "Jensen Huang", "queries": ["Jensen Huang stock", "Jensen Huang NVIDIA says"], "role": "CEO NVIDIA", "emoji": "🟢"},
+    {"name": "Elon Musk", "queries": ["Elon Musk stock buy", "Elon Musk invest company"], "role": "CEO Tesla/SpaceX/xAI", "emoji": "🔵"},
+    {"name": "Donald Trump", "queries": ["Trump stock market", "Trump tariff stock"], "role": "President USA", "emoji": "🔴"},
+    {"name": "Cathie Wood", "queries": ["Cathie Wood buy stock", "Cathie Wood ARK invest"], "role": "CEO ARK Invest", "emoji": "🟡"},
+    {"name": "Warren Buffett", "queries": ["Warren Buffett buy stock", "Buffett Berkshire invest"], "role": "CEO Berkshire Hathaway", "emoji": "🟠"},
 ]
 
-WATCHLIST = ["NVDA","TSLA","RKLB","ASTS","LUNR","AMD","IONQ","RGTI","QUBT","PLTR","AAPL","META","GOOG","AMZN","MSFT","MRVL"]
+# ticker + ชื่อเต็มของบริษัท
+STOCK_MAP = {
+    "NVDA": ["NVDA", "Nvidia"],
+    "TSLA": ["TSLA", "Tesla"],
+    "AMZN": ["AMZN", "Amazon"],
+    "AAPL": ["AAPL", "Apple"],
+    "META": ["META", "Meta", "Facebook"],
+    "GOOG": ["GOOG", "GOOGL", "Google", "Alphabet"],
+    "MSFT": ["MSFT", "Microsoft"],
+    "PLTR": ["PLTR", "Palantir"],
+    "AMD":  ["AMD"],
+    "RKLB": ["RKLB", "Rocket Lab"],
+    "ASTS": ["ASTS", "AST SpaceMobile"],
+    "LUNR": ["LUNR", "Intuitive Machines"],
+    "IONQ": ["IONQ", "IonQ"],
+    "RGTI": ["RGTI", "Rigetti"],
+    "QUBT": ["QUBT", "Quantum Computing"],
+    "MRVL": ["MRVL", "Marvell"],
+    "OXY":  ["OXY", "Occidental"],
+    "INTC": ["INTC", "Intel"],
+    "QCOM": ["QCOM", "Qualcomm"],
+}
 
 SEEN_TITLES = set()
+NEWS_MAX_AGE_HOURS = 48  # แสดงเฉพาะข่าวไม่เกิน 48 ชั่วโมง
 
 # ==========================================
 
@@ -71,40 +67,50 @@ def send_discord(title, description, color=0x00b4d8):
 
 
 def parse_pub_date(pub_date_str):
-    """แปลง pubDate เป็นเวลาไทย"""
+    """แปลง pubDate → datetime และ string เวลาไทย"""
     try:
         dt = parsedate_to_datetime(pub_date_str)
         dt_th = dt.astimezone(TH_TZ)
-        return dt_th.strftime("%d/%m/%Y %H:%M")
+        return dt_th, dt_th.strftime("%d/%m/%Y %H:%M")
     except:
-        return None
+        return None, None
+
+
+def is_recent(dt, max_hours=NEWS_MAX_AGE_HOURS):
+    """เช็คว่าข่าวใหม่พอไหม"""
+    if dt is None:
+        return True  # ถ้าไม่รู้วันที่ ให้ผ่าน
+    now = datetime.now(TH_TZ)
+    age = now - dt.astimezone(TH_TZ)
+    return age.total_seconds() < max_hours * 3600
 
 
 def fetch_news(query):
     url = f"https://news.google.com/rss/search?q={quote(query)}&hl=en-US&gl=US&ceid=US:en"
     try:
-        r = requests.get(url, timeout=10, headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        })
+        r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
         if r.status_code != 200:
             return []
         articles = []
         items = re.findall(r'<item>(.*?)</item>', r.text, re.DOTALL)
-        for item in items[:5]:
+        for item in items[:6]:
             title = re.search(r'<title>(.*?)</title>', item)
             link = re.search(r'<link>(.*?)</link>', item)
             desc = re.search(r'<description>(.*?)</description>', item)
             pub = re.search(r'<pubDate>(.*?)</pubDate>', item)
             if title:
-                clean_desc = re.sub(r'<[^>]+>', '', desc.group(1)).strip() if desc else ""
-                # ตัด URL ออกจาก description
-                clean_desc = re.sub(r'https?://\S+', '', clean_desc).strip()
-                clean_desc = re.sub(r'&lt;.*', '', clean_desc).strip()  # ตัด html entities
+                clean_desc = ""
+                if desc:
+                    clean_desc = re.sub(r'<[^>]+>', '', desc.group(1))
+                    clean_desc = re.sub(r'https?://\S+', '', clean_desc)
+                    clean_desc = re.sub(r'&\w+;', '', clean_desc).strip()[:250]
+                dt_obj, dt_str = parse_pub_date(pub.group(1).strip()) if pub else (None, None)
                 articles.append({
                     "title": re.sub(r'<[^>]+>', '', title.group(1)).strip(),
                     "url": link.group(1).strip() if link else "",
-                    "description": clean_desc[:250],
-                    "pub_date": parse_pub_date(pub.group(1).strip()) if pub else None,
+                    "description": clean_desc,
+                    "pub_dt": dt_obj,
+                    "pub_str": dt_str,
                 })
         return articles
     except Exception as e:
@@ -114,8 +120,8 @@ def fetch_news(query):
 
 def get_sentiment(text):
     t = text.lower()
-    bull = ["buy","bullish","surge","rally","upgrade","beat","record","soar","profit","gain","strong","rise","outperform","raise","praise","recommends","loves","backs","supports","invests","loads up"]
-    bear = ["sell","bearish","crash","drop","downgrade","miss","loss","plunge","weak","fall","concern","risk","cut","underperform","warning","dumps","exits","sold"]
+    bull = ["buy","bullish","surge","rally","upgrade","beat","record","soar","profit","gain","strong","rise","outperform","raise","praise","recommends","loves","backs","supports","invests","loads up","still bullish"]
+    bear = ["sell","bearish","crash","drop","downgrade","miss","loss","plunge","weak","fall","concern","risk","cut","underperform","warning","dumps","exits","sold","dumped"]
     b = sum(1 for w in bull if w in t)
     s = sum(1 for w in bear if w in t)
     if b > s: return ("📈 Bullish", 0x2ecc71)
@@ -124,12 +130,14 @@ def get_sentiment(text):
 
 
 def find_mentioned_stocks(text):
-    """หาว่าพูดถึงหุ้นตัวไหนบ้าง — ตัด URL ออกก่อน"""
+    """หาหุ้นที่พูดถึง โดยค้นหาทั้ง ticker และชื่อบริษัท"""
     clean = re.sub(r'https?://\S+', '', text)
     mentioned = []
-    for ticker in WATCHLIST:
-        if re.search(r'\b' + ticker + r'\b', clean.upper()):
-            mentioned.append(f"${ticker}")
+    for ticker, keywords in STOCK_MAP.items():
+        for kw in keywords:
+            if re.search(r'\b' + re.escape(kw) + r'\b', clean, re.IGNORECASE):
+                mentioned.append(f"${ticker} ({keywords[0] if len(keywords) > 1 else ticker})")
+                break
     return mentioned
 
 
@@ -150,6 +158,12 @@ def check_all():
             for art in articles:
                 if art["title"] in SEEN_TITLES:
                     continue
+
+                # กรองข่าวเก่า
+                if not is_recent(art["pub_dt"]):
+                    print(f"    ⏭ ข่าวเก่าเกิน 48h: {art['title'][:50]}...")
+                    continue
+
                 SEEN_TITLES.add(art["title"])
 
                 full = f"{art['title']} {art['description']}"
@@ -171,22 +185,19 @@ def check_all():
 
                     if stocks_mentioned:
                         desc += f"🎯 **หุ้นที่พูดถึง:** {', '.join(stocks_mentioned)}\n\n"
+                    else:
+                        desc += f"🎯 **หุ้นที่พูดถึง:** ไม่พบในรายการ watchlist\n\n"
 
                     if art['description']:
                         desc += f"📝 {art['description']}\n\n"
 
-                    # เพิ่มวันที่เวลาตามข่าว
-                    if art['pub_date']:
-                        desc += f"🕐 **เวลาข่าว (ไทย):** {art['pub_date']}\n\n"
+                    if art['pub_str']:
+                        desc += f"🕐 **เวลาข่าว (ไทย):** {art['pub_str']}\n\n"
 
                     if art['url']:
                         desc += f"[🔗 อ่านข่าวเต็ม]({art['url']})"
 
-                    send_discord(
-                        f"{target['emoji']} {target['name']} พูดถึงหุ้น!",
-                        desc,
-                        color
-                    )
+                    send_discord(f"{target['emoji']} {target['name']} พูดถึงหุ้น!", desc, color)
                     time.sleep(0.5)
 
     if not found_any:
@@ -205,23 +216,17 @@ def morning_summary():
 
 
 def main():
-    print("🚀 Stock Monitor (Celebrity Edition) เริ่มทำงาน!")
-    print(f"👤 ติดตาม {len(TARGETS)} คนดัง")
-    print(f"⏰ เช็คทุก {CHECK_INTERVAL_HOURS} ชั่วโมง")
-
+    print("🚀 Stock Monitor เริ่มทำงาน!")
     names = "\n".join([f"{t['emoji']} {t['name']} ({t['role']})" for t in TARGETS])
     send_discord(
         "✅ Stock Monitor เริ่มทำงานแล้ว!",
         f"**กำลังติดตามคนดัง:**\n{names}\n\n⏰ แจ้งเตือนทุก {CHECK_INTERVAL_HOURS} ชั่วโมง",
         color=0x00b4d8
     )
-
     check_all()
-
     schedule.every(CHECK_INTERVAL_HOURS).hours.do(check_all)
     schedule.every().day.at("08:00").do(morning_summary)
     schedule.every().day.at("22:00").do(lambda: send_discord("🌙 Evening Check", "Monitor ยังทำงานปกติ ✅", 0x6c5ce7))
-
     print("\n⏳ Monitor กำลังทำงาน...")
     while True:
         schedule.run_pending()
