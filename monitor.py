@@ -22,9 +22,11 @@ TARGETS = [
 
 # ticker + ชื่อเต็มของบริษัท (ครอบคลุมหุ้นที่คนดังมักพูดถึง)
 STOCK_MAP = {
-    # AI / Semiconductor
+    # ══════════════════════════════════════
+    # 🔵 AI / GPU / Semiconductor หลัก
+    # ══════════════════════════════════════
     "NVDA": ["NVDA", "Nvidia"],
-    "AMD":  ["AMD", "Advanced Micro"],
+    "AMD":  ["AMD", "Advanced Micro Devices"],
     "INTC": ["INTC", "Intel"],
     "QCOM": ["QCOM", "Qualcomm"],
     "MRVL": ["MRVL", "Marvell"],
@@ -37,8 +39,57 @@ STOCK_MAP = {
     "LRCX": ["LRCX", "Lam Research"],
     "MU":   ["MU", "Micron"],
     "KLAC": ["KLAC", "KLA"],
+    "ON":   ["ON Semiconductor", "onsemi"],
+    "WOLF": ["WOLF", "Wolfspeed"],
+    "SWKS": ["SWKS", "Skyworks"],
+    "MCHP": ["MCHP", "Microchip Technology"],
+    "TXN":  ["TXN", "Texas Instruments"],
+    "ADI":  ["ADI", "Analog Devices"],
+    "NXPI": ["NXPI", "NXP Semiconductors"],
+    "STM":  ["STM", "STMicroelectronics"],
+    "MPWR": ["MPWR", "Monolithic Power"],
+    "ONTO": ["ONTO", "Onto Innovation"],
+    "COHR": ["COHR", "Coherent"],
+    "LITE": ["LITE", "Lumentum"],
+    "ACLS": ["ACLS", "Axcelis"],
+    "UCTT": ["UCTT", "Ultra Clean"],
+    "FORM": ["FORM", "FormFactor"],
+    "ENTG": ["ENTG", "Entegris"],
+    "AMKR": ["AMKR", "Amkor"],
+    "CRUS": ["CRUS", "Cirrus Logic"],
+    "MTSI": ["MTSI", "MACOM"],
+    "POWI": ["POWI", "Power Integrations"],
+    "SITM": ["SITM", "SiTime"],
+    "AMBA": ["AMBA", "Ambarella"],
+    "ALGM": ["ALGM", "Allegro MicroSystems"],
+    "DIOD": ["DIOD", "Diodes"],
+    "SLAB": ["SLAB", "Silicon Labs"],
+    "RMBS": ["RMBS", "Rambus"],
+    "SIGI": ["SIGI", "Selective Insurance"],
+    "IPGP": ["IPGP", "IPG Photonics"],
 
-    # Big Tech
+    # ══════════════════════════════════════
+    # 🟣 AI Infrastructure / Data Center
+    # ══════════════════════════════════════
+    "VRT":  ["VRT", "Vertiv"],
+    "DELL": ["DELL", "Dell"],
+    "HPE":  ["HPE", "Hewlett Packard Enterprise"],
+    "ANET": ["ANET", "Arista Networks"],
+    "CRDO": ["CRDO", "Credo Technology"],
+    "CIEN": ["CIEN", "Ciena"],
+    "PSTG": ["PSTG", "Pure Storage"],
+    "NTAP": ["NTAP", "NetApp"],
+    "WDC":  ["WDC", "Western Digital"],
+    "STX":  ["STX", "Seagate"],
+    "EQIX": ["EQIX", "Equinix"],
+    "DLR":  ["DLR", "Digital Realty"],
+    "AMT":  ["AMT", "American Tower"],
+    "IREN": ["IREN", "Iris Energy"],
+    "CORZ": ["CORZ", "Core Scientific"],
+
+    # ══════════════════════════════════════
+    # 🟢 Big Tech
+    # ══════════════════════════════════════
     "AAPL": ["AAPL", "Apple"],
     "MSFT": ["MSFT", "Microsoft"],
     "GOOG": ["GOOG", "GOOGL", "Google", "Alphabet"],
@@ -46,70 +97,184 @@ STOCK_MAP = {
     "META": ["META", "Meta", "Facebook"],
     "NFLX": ["NFLX", "Netflix"],
     "ORCL": ["ORCL", "Oracle"],
+    "IBM":  ["IBM"],
+    "SAP":  ["SAP"],
+    "CSCO": ["CSCO", "Cisco"],
+
+    # ══════════════════════════════════════
+    # 🟡 AI Software / SaaS / Cloud
+    # ══════════════════════════════════════
     "CRM":  ["CRM", "Salesforce"],
     "ADBE": ["ADBE", "Adobe"],
-    "NOW":  ["ServiceNow"],
     "SNOW": ["SNOW", "Snowflake"],
-    "UBER": ["UBER"],
-    "LYFT": ["LYFT"],
-
-    # AI / Software
-    "PLTR": ["PLTR", "Palantir"],
-    "SOUN": ["SOUN", "SoundHound"],
-    "PATH": ["PATH", "UiPath"],
+    "DDOG": ["DDOG", "Datadog"],
+    "MDB":  ["MDB", "MongoDB"],
+    "GTLB": ["GTLB", "GitLab"],
+    "CFLT": ["CFLT", "Confluent"],
+    "ESTC": ["ESTC", "Elastic"],
+    "SUMO": ["SUMO", "Sumo Logic"],
     "AI":   ["C3.ai"],
     "BBAI": ["BBAI", "BigBear"],
+    "SOUN": ["SOUN", "SoundHound"],
+    "AIRS": ["AIRS", "Airsculpt"],
+    "GFAI": ["GFAI", "Guardforce AI"],
+    "SYNTX":["Synthetix"],
+    "PATH": ["PATH", "UiPath"],
+    "APPF": ["APPF", "AppFolio"],
+    "HUBS": ["HUBS", "HubSpot"],
+    "SHOP": ["SHOP", "Shopify"],
+    "TWLO": ["TWLO", "Twilio"],
+    "ZM":   ["ZM", "Zoom"],
+    "DOCU": ["DOCU", "DocuSign"],
+    "COUP": ["COUP", "Coupa"],
+    "BRZE": ["BRZE", "Braze"],
+    "PCOR": ["PCOR", "Procore"],
+    "TOST": ["TOST", "Toast"],
+    "BILL": ["BILL"],
+    "APPN": ["APPN", "Appian"],
+    "ALTR": ["ALTR", "Altair"],
+    "AZPN": ["AZPN", "Aspen Technology"],
+    "PTC":  ["PTC"],
+    "ANSS": ["ANSS", "Ansys"],
+    "CDNS": ["CDNS", "Cadence"],
+    "SNPS": ["SNPS", "Synopsys"],
+    "MANH": ["MANH", "Manhattan Associates"],
+    "VEEV": ["VEEV", "Veeva"],
+    "NUAN": ["NUAN", "Nuance"],
+    "PLTR": ["PLTR", "Palantir"],
 
-    # EV / Tesla ecosystem
-    "TSLA": ["TSLA", "Tesla"],
-    "RIVN": ["RIVN", "Rivian"],
-    "LCID": ["LCID", "Lucid"],
-    "NIO":  ["NIO"],
-    "LI":   ["Li Auto"],
-    "XPEV": ["XPEV", "XPeng"],
+    # ══════════════════════════════════════
+    # 🔴 Cybersecurity
+    # ══════════════════════════════════════
+    "NET":  ["NET", "Cloudflare"],
+    "ZS":   ["ZS", "Zscaler"],
+    "CRWD": ["CRWD", "CrowdStrike"],
+    "PANW": ["PANW", "Palo Alto"],
+    "FTNT": ["FTNT", "Fortinet"],
+    "OKTA": ["OKTA"],
+    "S":    ["SentinelOne"],
+    "TENB": ["TENB", "Tenable"],
+    "VRNS": ["VRNS", "Varonis"],
+    "QLYS": ["QLYS", "Qualys"],
+    "RPD":  ["RPD", "Rapid7"],
 
-    # Space
+    # ══════════════════════════════════════
+    # 🚀 Space / Aerospace / Defense
+    # ══════════════════════════════════════
     "RKLB": ["RKLB", "Rocket Lab"],
     "ASTS": ["ASTS", "AST SpaceMobile"],
     "LUNR": ["LUNR", "Intuitive Machines"],
     "MNTS": ["MNTS", "Momentus"],
     "RDW":  ["RDW", "Redwire"],
     "SPCE": ["SPCE", "Virgin Galactic"],
+    "ASTR": ["ASTR", "Astra Space"],
+    "LMT":  ["LMT", "Lockheed Martin"],
+    "RTX":  ["RTX", "Raytheon"],
+    "NOC":  ["NOC", "Northrop Grumman"],
+    "BA":   ["BA", "Boeing"],
+    "GD":   ["GD", "General Dynamics"],
+    "HII":  ["HII", "Huntington Ingalls"],
+    "KTOS": ["KTOS", "Kratos Defense"],
+    "AJRD": ["AJRD", "Aerojet"],
+    "BWXT": ["BWXT", "BWX Technologies"],
+    "MAXR": ["MAXR", "Maxar"],
+    "PLBY": ["PLBY"],
+    "ATRO": ["ATRO", "Astronics"],
+    "TDY":  ["TDY", "Teledyne"],
+    "HXL":  ["HXL", "Hexcel"],
+    "MOOG": ["MOOG"],
+    "AXON": ["AXON", "Axon Enterprise"],
+    "LDOS": ["LDOS", "Leidos"],
+    "BAH":  ["BAH", "Booz Allen"],
+    "SAIC": ["SAIC"],
+    "DRS":  ["DRS", "Leonardo DRS"],
 
-    # Quantum
+    # ══════════════════════════════════════
+    # ⚛️ Quantum Computing
+    # ══════════════════════════════════════
     "IONQ": ["IONQ", "IonQ"],
     "RGTI": ["RGTI", "Rigetti"],
     "QUBT": ["QUBT", "Quantum Computing"],
-    "IBM":  ["IBM"],
     "QBTS": ["QBTS", "D-Wave"],
+    "ARQQ": ["ARQQ", "Arqit Quantum"],
+    "QTUM": ["QTUM"],
 
-    # Finance / Crypto related
+    # ══════════════════════════════════════
+    # ⚡ EV / Clean Energy Tech
+    # ══════════════════════════════════════
+    "TSLA": ["TSLA", "Tesla"],
+    "RIVN": ["RIVN", "Rivian"],
+    "LCID": ["LCID", "Lucid"],
+    "NIO":  ["NIO"],
+    "XPEV": ["XPEV", "XPeng"],
+    "FSR":  ["FSR", "Fisker"],
+    "CHPT": ["CHPT", "ChargePoint"],
+    "BLNK": ["BLNK", "Blink Charging"],
+    "EVGO": ["EVGO"],
+    "BE":   ["BE", "Bloom Energy"],
+    "FCEL": ["FCEL", "FuelCell"],
+    "PLUG": ["PLUG", "Plug Power"],
+    "ENPH": ["ENPH", "Enphase"],
+    "SEDG": ["SEDG", "SolarEdge"],
+    "ARRY": ["ARRY", "Array Technologies"],
+
+    # ══════════════════════════════════════
+    # 🤖 Robotics / Automation
+    # ══════════════════════════════════════
+    "ISRG": ["ISRG", "Intuitive Surgical"],
+    "ABB":  ["ABB"],
+    "ROK":  ["ROK", "Rockwell Automation"],
+    "BRKS": ["BRKS", "Brooks Automation"],
+    "TRMB": ["TRMB", "Trimble"],
+    "IRBT": ["IRBT", "iRobot"],
+    "AEHR": ["AEHR", "Aehr Test"],
+    "RMTI": ["RMTI"],
+    "ZZZZZ":["Figure AI", "1X Technologies", "Apptronik"],
+
+    # ══════════════════════════════════════
+    # 💰 Crypto / Fintech
+    # ══════════════════════════════════════
     "COIN": ["COIN", "Coinbase"],
     "MSTR": ["MSTR", "MicroStrategy"],
     "SQ":   ["SQ", "Block", "Square"],
     "PYPL": ["PYPL", "PayPal"],
+    "AFRM": ["AFRM", "Affirm"],
+    "SOFI": ["SOFI", "SoFi"],
+    "HOOD": ["HOOD", "Robinhood"],
+    "MARA": ["MARA", "Marathon Digital"],
+    "RIOT": ["RIOT", "Riot Platforms"],
+    "HUT":  ["HUT", "Hut 8"],
+    "CLSK": ["CLSK", "CleanSpark"],
     "V":    ["Visa"],
     "MA":   ["Mastercard"],
-    "GS":   ["GS", "Goldman Sachs"],
-    "JPM":  ["JPM", "JPMorgan"],
-    "BAC":  ["BAC", "Bank of America"],
 
-    # Buffett favorites
+    # ══════════════════════════════════════
+    # 🏦 Buffett / Value favorites
+    # ══════════════════════════════════════
     "OXY":  ["OXY", "Occidental"],
     "KO":   ["KO", "Coca-Cola"],
     "CVX":  ["CVX", "Chevron"],
     "BRK":  ["Berkshire"],
     "KHC":  ["KHC", "Kraft Heinz"],
+    "BAC":  ["BAC", "Bank of America"],
+    "GS":   ["GS", "Goldman Sachs"],
+    "JPM":  ["JPM", "JPMorgan"],
+    "AXP":  ["AXP", "American Express"],
 
-    # Trump related
-    "DJT":  ["DJT", "Truth Social"],
-
-    # ARK / Cathie Wood favorites
-    "ROKU": ["ROKU"],
-    "SHOP": ["SHOP", "Shopify"],
+    # ══════════════════════════════════════
+    # 📱 Consumer Tech / Social
+    # ══════════════════════════════════════
+    "UBER": ["UBER"],
+    "LYFT": ["LYFT"],
+    "ABNB": ["ABNB", "Airbnb"],
+    "DASH": ["DASH", "DoorDash"],
+    "SNAP": ["SNAP", "Snapchat"],
+    "PINS": ["PINS", "Pinterest"],
+    "RDDT": ["RDDT", "Reddit"],
     "SPOT": ["SPOT", "Spotify"],
-    "ZM":   ["ZM", "Zoom"],
+    "ROKU": ["ROKU"],
     "TDOC": ["TDOC", "Teladoc"],
+    "DJT":  ["DJT", "Truth Social"],
 }
 
 SEEN_TITLES = set()
