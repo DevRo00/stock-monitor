@@ -101,9 +101,14 @@ def fetch_news(query):
             if title:
                 clean_desc = ""
                 if desc:
-                    clean_desc = re.sub(r'<[^>]+>', '', desc.group(1))
-                    clean_desc = re.sub(r'https?://\S+', '', clean_desc)
-                    clean_desc = re.sub(r'&\w+;', '', clean_desc).strip()[:250]
+                    clean_desc = desc.group(1)
+                    clean_desc = re.sub(r'<[^>]+>', ' ', clean_desc)       # ตัด HTML tags
+                    clean_desc = re.sub(r'https?://\S+', '', clean_desc)   # ตัด URL
+                    clean_desc = re.sub(r'&[a-zA-Z]+;', ' ', clean_desc)   # ตัด HTML entities
+                    clean_desc = re.sub(r'&#\d+;', ' ', clean_desc)        # ตัด numeric entities
+                    clean_desc = re.sub(r'a href=.*', '', clean_desc)       # ตัด href ที่เหลือ
+                    clean_desc = re.sub(r'font color=.*', '', clean_desc)   # ตัด font tags
+                    clean_desc = re.sub(r'\s+', ' ', clean_desc).strip()[:250]
                 dt_obj, dt_str = parse_pub_date(pub.group(1).strip()) if pub else (None, None)
                 articles.append({
                     "title": re.sub(r'<[^>]+>', '', title.group(1)).strip(),
@@ -175,7 +180,7 @@ def check_all():
                 sentiment, color = get_sentiment(full)
                 stocks_mentioned = find_mentioned_stocks(full)
 
-                if stocks_mentioned or sentiment != "➡️ Neutral":
+                if stocks_mentioned and sentiment != "➡️ Neutral":
                     found_any = True
                     print(f"    🚨 {art['title'][:60]}...")
 
@@ -185,8 +190,6 @@ def check_all():
 
                     if stocks_mentioned:
                         desc += f"🎯 **หุ้นที่พูดถึง:** {', '.join(stocks_mentioned)}\n\n"
-                    else:
-                        desc += f"🎯 **หุ้นที่พูดถึง:** ไม่พบในรายการ watchlist\n\n"
 
                     if art['description']:
                         desc += f"📝 {art['description']}\n\n"
