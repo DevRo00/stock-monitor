@@ -20,27 +20,96 @@ TARGETS = [
     {"name": "Warren Buffett", "queries": ["Warren Buffett buy stock", "Buffett Berkshire invest"], "role": "CEO Berkshire Hathaway", "emoji": "🟠"},
 ]
 
-# ticker + ชื่อเต็มของบริษัท
+# ticker + ชื่อเต็มของบริษัท (ครอบคลุมหุ้นที่คนดังมักพูดถึง)
 STOCK_MAP = {
+    # AI / Semiconductor
     "NVDA": ["NVDA", "Nvidia"],
-    "TSLA": ["TSLA", "Tesla"],
-    "AMZN": ["AMZN", "Amazon"],
+    "AMD":  ["AMD", "Advanced Micro"],
+    "INTC": ["INTC", "Intel"],
+    "QCOM": ["QCOM", "Qualcomm"],
+    "MRVL": ["MRVL", "Marvell"],
+    "ARM":  ["ARM Holdings"],
+    "SMCI": ["SMCI", "Super Micro"],
+    "AVGO": ["AVGO", "Broadcom"],
+    "TSM":  ["TSM", "TSMC", "Taiwan Semiconductor"],
+    "AMAT": ["AMAT", "Applied Materials"],
+    "ASML": ["ASML"],
+    "LRCX": ["LRCX", "Lam Research"],
+    "MU":   ["MU", "Micron"],
+    "KLAC": ["KLAC", "KLA"],
+
+    # Big Tech
     "AAPL": ["AAPL", "Apple"],
-    "META": ["META", "Meta", "Facebook"],
-    "GOOG": ["GOOG", "GOOGL", "Google", "Alphabet"],
     "MSFT": ["MSFT", "Microsoft"],
+    "GOOG": ["GOOG", "GOOGL", "Google", "Alphabet"],
+    "AMZN": ["AMZN", "Amazon"],
+    "META": ["META", "Meta", "Facebook"],
+    "NFLX": ["NFLX", "Netflix"],
+    "ORCL": ["ORCL", "Oracle"],
+    "CRM":  ["CRM", "Salesforce"],
+    "ADBE": ["ADBE", "Adobe"],
+    "NOW":  ["ServiceNow"],
+    "SNOW": ["SNOW", "Snowflake"],
+    "UBER": ["UBER"],
+    "LYFT": ["LYFT"],
+
+    # AI / Software
     "PLTR": ["PLTR", "Palantir"],
-    "AMD":  ["AMD"],
+    "SOUN": ["SOUN", "SoundHound"],
+    "PATH": ["PATH", "UiPath"],
+    "AI":   ["C3.ai"],
+    "BBAI": ["BBAI", "BigBear"],
+
+    # EV / Tesla ecosystem
+    "TSLA": ["TSLA", "Tesla"],
+    "RIVN": ["RIVN", "Rivian"],
+    "LCID": ["LCID", "Lucid"],
+    "NIO":  ["NIO"],
+    "LI":   ["Li Auto"],
+    "XPEV": ["XPEV", "XPeng"],
+
+    # Space
     "RKLB": ["RKLB", "Rocket Lab"],
     "ASTS": ["ASTS", "AST SpaceMobile"],
     "LUNR": ["LUNR", "Intuitive Machines"],
+    "MNTS": ["MNTS", "Momentus"],
+    "RDW":  ["RDW", "Redwire"],
+    "SPCE": ["SPCE", "Virgin Galactic"],
+
+    # Quantum
     "IONQ": ["IONQ", "IonQ"],
     "RGTI": ["RGTI", "Rigetti"],
     "QUBT": ["QUBT", "Quantum Computing"],
-    "MRVL": ["MRVL", "Marvell"],
+    "IBM":  ["IBM"],
+    "QBTS": ["QBTS", "D-Wave"],
+
+    # Finance / Crypto related
+    "COIN": ["COIN", "Coinbase"],
+    "MSTR": ["MSTR", "MicroStrategy"],
+    "SQ":   ["SQ", "Block", "Square"],
+    "PYPL": ["PYPL", "PayPal"],
+    "V":    ["Visa"],
+    "MA":   ["Mastercard"],
+    "GS":   ["GS", "Goldman Sachs"],
+    "JPM":  ["JPM", "JPMorgan"],
+    "BAC":  ["BAC", "Bank of America"],
+
+    # Buffett favorites
     "OXY":  ["OXY", "Occidental"],
-    "INTC": ["INTC", "Intel"],
-    "QCOM": ["QCOM", "Qualcomm"],
+    "KO":   ["KO", "Coca-Cola"],
+    "CVX":  ["CVX", "Chevron"],
+    "BRK":  ["Berkshire"],
+    "KHC":  ["KHC", "Kraft Heinz"],
+
+    # Trump related
+    "DJT":  ["DJT", "Truth Social"],
+
+    # ARK / Cathie Wood favorites
+    "ROKU": ["ROKU"],
+    "SHOP": ["SHOP", "Shopify"],
+    "SPOT": ["SPOT", "Spotify"],
+    "ZM":   ["ZM", "Zoom"],
+    "TDOC": ["TDOC", "Teladoc"],
 }
 
 SEEN_TITLES = set()
