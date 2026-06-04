@@ -557,6 +557,104 @@ def check_nvidia_events():
             time.sleep(0.5)
 
 
+
+def check_nvidia_events_calendar():
+    """ดักตาราง event ของ NVIDIA / Jensen Huang ล่วงหน้า"""
+    print("\n📅 เช็ค NVIDIA Events Calendar...")
+
+    sources = [
+        ("NVIDIA IR", "https://investor.nvidia.com/events-and-presentations/events/default.aspx"),
+        ("NVIDIA Newsroom", "https://nvidianews.nvidia.com/"),
+    ]
+
+    event_keywords = [
+        "jensen", "keynote", "conference", "summit", "forum",
+        "gtc", "computex", "ces", "nvidia event", "presentation",
+        "investor day", "earnings call", "fireside chat", "interview",
+    ]
+
+    found_events = []
+
+    for source_name, url in sources:
+        try:
+            r = requests.get(url, timeout=10, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            })
+            if r.status_code != 200:
+                print(f"  ⚠️ {source_name}: {r.status_code}")
+                continue
+
+            # ดึง text ออกมา ตัด HTML
+            text = re.sub(r'<[^>]+>', ' ', r.text)
+            text = re.sub(r'\s+', ' ', text)
+
+            # หาประโยคที่มี keyword
+            sentences = re.split(r'[.\n|]', text)
+            for sentence in sentences:
+                s_lower = sentence.lower()
+                if any(kw in s_lower for kw in event_keywords):
+                    clean = sentence.strip()
+                    if len(clean) > 30 and clean not in found_events:
+                        found_events.append(clean[:200])
+
+        except Exception as e:
+            print(f"  ⚠️ {source_name} error: {e}")
+
+    # ค้นหาเพิ่มจาก Google News ล่วงหน้า
+    upcoming_queries = [
+        "Jensen Huang keynote 2026",
+        "NVIDIA GTC 2026",
+        "Jensen Huang speaking event",
+        "Jensen Huang conference schedule",
+        "NVIDIA event upcoming",
+    ]
+
+    news_events = []
+    for query in upcoming_queries:
+        articles = fetch_news(query)
+        time.sleep(0.5)
+        for art in articles:
+            title = art["title"]
+            if title in SEEN_TITLES:
+                continue
+            full = f"{title} {art['description']}".lower()
+            if "jensen" not in full and "nvidia" not in full:
+                continue
+            # หาเฉพาะที่มีคำบอกอนาคต
+            future_words = ["will", "upcoming", "next", "schedule", "announce", "join", "attend", "speak", "present", "host"]
+            if any(w in full for w in future_words):
+                news_events.append({
+                    "title": title,
+                    "url": art["url"],
+                    "pub_str": art["pub_str"],
+                })
+                SEEN_TITLES.add(title)
+
+    # ส่ง Discord
+    if news_events:
+        for ev in news_events[:3]:
+            desc = f"**CEO NVIDIA** 🟢\n\n"
+            desc += f"📅 **{ev['title']}**\n\n"
+            if ev['pub_str']:
+                desc += f"🕐 **เวลาข่าว (ไทย):** {ev['pub_str']}\n\n"
+            if ev['url']:
+                desc += f"[🔗 อ่านรายละเอียด]({ev['url']})"
+            send_discord("📅 Jensen Huang จะขึ้นเวที!", desc, color=0x00b4d8)
+            time.sleep(0.5)
+        print(f"  ✅ พบ {len(news_events)} upcoming events")
+    else:
+        print("  ✓ ไม่พบ upcoming events ใหม่")
+
+    # ส่ง NVIDIA IR events ถ้าพบ
+    if found_events:
+        desc = "**ข้อมูลจาก NVIDIA Investor Relations**\n\n"
+        for ev in found_events[:5]:
+            desc += f"📌 {ev}\n\n"
+        desc += f"[🔗 ดู NVIDIA Events ทั้งหมด](https://investor.nvidia.com/events-and-presentations/events/default.aspx)"
+        send_discord("🏢 NVIDIA Official Events", desc, color=0x76b900)
+        print(f"  ✅ พบ {len(found_events)} events จาก NVIDIA IR")
+
+
 def main():
     print("🚀 Stock Monitor เริ่มทำงาน!")
     names = "\n".join([f"{t['emoji']} {t['name']} ({t['role']})" for t in TARGETS])
@@ -568,6 +666,7 @@ def main():
     check_all()
     schedule.every(CHECK_INTERVAL_HOURS).hours.do(check_all)
     schedule.every(1).hours.do(check_nvidia_events)   # Jensen ทุก 1 ชม.
+    schedule.every(12).hours.do(check_nvidia_events_calendar)  # NVIDIA Calendar ทุก 12 ชม.
     schedule.every(6).hours.do(check_sec_filings)     # SEC ทุก 6 ชม.
     schedule.every().day.at("08:00").do(morning_summary)
     schedule.every().day.at("22:00").do(lambda: send_discord("🌙 Evening Check", "Monitor ยังทำงานปกติ ✅", 0x6c5ce7))
