@@ -13,7 +13,7 @@ CHECK_INTERVAL_HOURS = int(os.environ.get("CHECK_INTERVAL_HOURS", "4"))
 TH_TZ = timezone(timedelta(hours=7))
 
 TARGETS = [
-    {"name": "Jensen Huang", "queries": ["Jensen Huang stock", "Jensen Huang NVIDIA says"], "role": "CEO NVIDIA", "emoji": "🟢"},
+    {"name": "Jensen Huang", "queries": ["Jensen Huang", "Jensen Huang NVIDIA", "Jensen Huang says", "Jensen Huang interview", "Jensen Huang keynote", "Jensen Huang AI chip", "Nvidia CEO Jensen"], "role": "CEO NVIDIA", "emoji": "🟢"},
     {"name": "Elon Musk", "queries": ["Elon Musk stock buy", "Elon Musk invest company"], "role": "CEO Tesla/SpaceX/xAI", "emoji": "🔵"},
     {"name": "Donald Trump", "queries": ["Trump stock market", "Trump tariff stock"], "role": "President USA", "emoji": "🔴"},
     {"name": "Cathie Wood", "queries": ["Cathie Wood buy stock", "Cathie Wood ARK invest"], "role": "CEO ARK Invest", "emoji": "🟡"},
@@ -452,6 +452,111 @@ def morning_summary():
     check_all()
 
 
+SEC_PEOPLE = {
+    "Warren Buffett": {"cik": "0001067983", "name": "Berkshire Hathaway"},
+    "Cathie Wood":    {"cik": "0001579982", "name": "ARK Investment"},
+}
+
+def check_sec_filings():
+    """ตรวจ SEC EDGAR — จับเมื่อ Buffett/Cathie Wood ซื้อขายหุ้นจริงๆ"""
+    print("\n📋 เช็ค SEC Filings...")
+    
+    for person, info in SEC_PEOPLE.items():
+        try:
+            url = f"https://data.sec.gov/submissions/CIK{info['cik'].zfill(10)}.json"
+            r = requests.get(url, timeout=10, headers={"User-Agent": "StockMonitor admin@stockmonitor.com"})
+            if r.status_code != 200:
+                continue
+            
+            data = r.json()
+            filings = data.get("filings", {}).get("recent", {})
+            forms = filings.get("form", [])
+            dates = filings.get("filingDate", [])
+            accessions = filings.get("accessionNumber", [])
+            descriptions = filings.get("primaryDocument", [])
+
+            # หา filing ใหม่ใน 48 ชั่วโมง
+            now = datetime.now(TH_TZ)
+            for i, (form, date, acc) in enumerate(zip(forms, dates, accessions)):
+                if form not in ["4", "13F-HR", "SC 13G", "SC 13D"]:
+                    continue
+                
+                filing_dt = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=TH_TZ)
+                age_hours = (now - filing_dt).total_seconds() / 3600
+                
+                if age_hours > 48:
+                    continue
+
+                acc_clean = acc.replace("-", "")
+                filing_url = f"https://www.sec.gov/Archives/edgar/full-index/{date[:4]}/{date[5:7]}/{acc_clean}/"
+                
+                form_label = {
+                    "4": "📝 Form 4 (ซื้อ/ขายหุ้นจริง!)",
+                    "13F-HR": "📊 13F (รายงานถือหุ้นรายไตรมาส)",
+                    "SC 13G": "📋 SC 13G (ถือหุ้น >5%)",
+                    "SC 13D": "🚨 SC 13D (ถือหุ้น >5% เชิงรุก)",
+                }.get(form, form)
+
+                msg = f"**{info['name']}**\n\n"
+                msg += f"📋 {form_label}\n"
+                msg += f"🕐 ยื่นเมื่อ: {filing_dt.strftime('%d/%m/%Y')} (เวลาไทย)\n\n"
+                msg += f"[🔗 ดู Filing จริงบน SEC]({filing_url})"
+
+                send_discord(
+                    f"🏛️ SEC Filing: {person}",
+                    msg,
+                    color=0xe67e22
+                )
+                print(f"  🚨 SEC: {person} ยื่น {form} วันที่ {date}")
+                time.sleep(0.5)
+
+        except Exception as e:
+            print(f"  SEC error [{person}]: {e}")
+
+
+def check_nvidia_events():
+    """ดักข่าว Jensen Huang / NVIDIA event แบบเร็วที่สุด"""
+    print("\n🟢 เช็ค Jensen Huang / NVIDIA...")
+    queries = [
+        "Jensen Huang speaking",
+        "Jensen Huang keynote today",
+        "NVIDIA announcement today",
+        "Jensen Huang conference",
+        "Jensen Huang interview today",
+    ]
+    for query in queries:
+        articles = fetch_news(query)
+        time.sleep(0.5)
+        for art in articles:
+            if art["title"] in SEEN_TITLES:
+                continue
+            if not is_recent(art["pub_dt"], max_hours=12):  # เฉพาะ 12 ชม.ล่าสุด
+                continue
+            SEEN_TITLES.add(art["title"])
+            
+            full = f"{art['title']} {art['description']}"
+            if "jensen" not in full.lower() and "nvidia" not in full.lower():
+                continue
+
+            sentiment, color = get_sentiment(full)
+            stocks = find_mentioned_stocks(full)
+
+            desc = f"**CEO NVIDIA** 🟢\n_{sentiment}_\n\n"
+            desc += f"📰 **{art['title']}**\n\n"
+            if stocks:
+                desc += f"🎯 **หุ้นที่พูดถึง:** {', '.join(stocks)}\n\n"
+            if art['description']:
+                desc += f"📝 {art['description']}\n\n"
+            if art['pub_str']:
+                desc += f"🕐 **เวลาข่าว (ไทย):** {art['pub_str']}\n\n"
+            if art['url']:
+                desc += f"[🔗 อ่านข่าวเต็ม]({art['url']})"
+
+            send_discord("🟢 Jensen Huang พูด/ให้สัมภาษณ์!", desc, color)
+            print(f"  🚨 Jensen: {art['title'][:60]}")
+            time.sleep(0.5)
+
+
 def main():
     print("🚀 Stock Monitor เริ่มทำงาน!")
     names = "\n".join([f"{t['emoji']} {t['name']} ({t['role']})" for t in TARGETS])
@@ -462,6 +567,8 @@ def main():
     )
     check_all()
     schedule.every(CHECK_INTERVAL_HOURS).hours.do(check_all)
+    schedule.every(1).hours.do(check_nvidia_events)   # Jensen ทุก 1 ชม.
+    schedule.every(6).hours.do(check_sec_filings)     # SEC ทุก 6 ชม.
     schedule.every().day.at("08:00").do(morning_summary)
     schedule.every().day.at("22:00").do(lambda: send_discord("🌙 Evening Check", "Monitor ยังทำงานปกติ ✅", 0x6c5ce7))
     print("\n⏳ Monitor กำลังทำงาน...")
